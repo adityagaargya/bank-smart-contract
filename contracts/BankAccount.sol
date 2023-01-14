@@ -30,4 +30,31 @@ contract BankAccount {
         uint balance;
         mapping(uint => WithdrawRequest) withdrawRequests;
     }
+
+    mapping(uint => Account) accounts;
+    mapping(address => uint[]) userAccounts;
+
+    uint nextAccountId;
+    uint nextWithdrawId;
+
+    function deposit(uint accountId) external payable {}
+
+    function createAccount(address[] calldata otherOwners) external {}
+
+    function requestWithdrawal(uint accountId, uint amount) external {}
+
+    function approveWithdrawal(uint accountId, uint withdrawId) external {}
+
+    function withdraw(uint accountId, uint withdrawId) external {}
+
+    function getBalance(uint accountId) public view returns (uint) {}
+
+    function getOwners(uint accounId) public view returns (address[] memory) {}
+
+    function getApprovals(
+        uint accountId,
+        uint withdrawId
+    ) public view returns (uint) {}
+
+    function getAccounts() public view returns (uint[] memory) {}
 }
