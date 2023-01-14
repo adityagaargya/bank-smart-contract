@@ -88,6 +88,18 @@ contract BankAccount {
         _;
     }
 
+    modifier canWithdraw(uint accountId, uint withdrawId) {
+        require(
+            accounts[accountId].withdrawRequests[withdrawId].user == msg.sender,
+            "You did not create this request"
+        );
+        require(
+            accounts[accountId].withdrawRequests[withdrawId].approved,
+            "This request is not approved"
+        );
+        _;
+    }
+
     function deposit(uint accountId) external payable accountOwner(accountId) {
         accounts[accountId].balance += msg.value;
     }
@@ -148,16 +160,38 @@ contract BankAccount {
         }
     }
 
-    function withdraw(uint accountId, uint withdrawId) external {}
+    function withdraw(
+        uint accountId,
+        uint withdrawId
+    ) external canWithdraw(accountId, withdrawId) {
+        uint amount = accounts[accountId].withdrawRequests[withdrawId].amount;
+        require(accounts[accountId].balance >= amount, "Insufficient Balance");
 
-    function getBalance(uint accountId) public view returns (uint) {}
+        accounts[accountId].balance -= amount;
+        delete accounts[accountId].withdrawRequests[withdrawId];
 
-    function getOwners(uint accounId) public view returns (address[] memory) {}
+        (bool sent, ) = payable(msg.sender).call{value: amount}("");
+        require(sent);
+
+        emit Withdraw(withdrawId, block.timestamp);
+    }
+
+    function getBalance(uint accountId) public view returns (uint) {
+        return accounts[accountId].balance;
+    }
+
+    function getOwners(uint accounId) public view returns (address[] memory) {
+        return accounts[accounId].owners;
+    }
 
     function getApprovals(
         uint accountId,
         uint withdrawId
-    ) public view returns (uint) {}
+    ) public view returns (uint) {
+        return accounts[accountId].withdrawRequests[withdrawId].approvals;
+    }
 
-    function getAccounts() public view returns (uint[] memory) {}
+    function getAccounts() public view returns (uint[] memory) {
+        return userAccounts[msg.sender];
+    }
 }
