@@ -61,6 +61,33 @@ contract BankAccount {
         _;
     }
 
+    modifier sufficientBalance(uint accountId, uint amount) {
+        require(accounts[accountId].balance >= amount, "insufficient balance");
+        _;
+    }
+
+    modifier canApprove(uint accountId, uint withdrawId) {
+        require(
+            !accounts[accountId].withdrawRequests[withdrawId].approved,
+            "This request is already approved"
+        );
+        require(
+            accounts[accountId].withdrawRequests[withdrawId].user != msg.sender,
+            "You cannot approve this request"
+        );
+        require(
+            accounts[accountId].withdrawRequests[withdrawId].user != address(0),
+            "This request does not exist"
+        );
+        require(
+            accounts[accountId].withdrawRequests[withdrawId].ownersApproved[
+                msg.sender
+            ],
+            "You have already approved this request"
+        );
+        _;
+    }
+
     function deposit(uint accountId) external payable accountOwner(accountId) {
         accounts[accountId].balance += msg.value;
     }
@@ -90,9 +117,36 @@ contract BankAccount {
     function requestWithdrawal(
         uint accountId,
         uint amount
-    ) external accountOwner(accountId) {}
+    ) external accountOwner(accountId) sufficientBalance(accountId, amount) {
+        uint id = nextWithdrawId;
+        WithdrawRequest storage request = accounts[accountId].withdrawRequests[
+            id
+        ];
+        request.user = msg.sender;
+        request.amount = amount;
+        nextWithdrawId++;
+        emit WithdrawRequested(
+            msg.sender,
+            accountId,
+            id,
+            amount,
+            block.timestamp
+        );
+    }
 
-    function approveWithdrawal(uint accountId, uint withdrawId) external {}
+    function approveWithdrawal(
+        uint accountId,
+        uint withdrawId
+    ) external accountOwner(accountId) canApprove(accountId, withdrawId) {
+        WithdrawRequest storage request = accounts[accountId].withdrawRequests[
+            withdrawId
+        ];
+        request.approvals++;
+        request.ownersApproved[msg.sender] = true;
+        if (request.approvals == accounts[accountId].owners.length - 1) {
+            request.approved = true;
+        }
+    }
 
     function withdraw(uint accountId, uint withdrawId) external {}
 
